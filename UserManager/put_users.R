@@ -18,5 +18,5 @@ saveRDS(userpass.df, "UserManager/userpass.df.rds")
 put_object(
   file = file.path("UserManager", "userpass.df.rds"), 
   object = "userpass.df.rds", 
-  bucket = "cryptomlbucket/mlprophet_users"
+  bucket = "cryptomlbucket/mket_users"
 )

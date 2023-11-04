@@ -38,7 +38,7 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   userpass.df = reactiveValues()
-  userpass.df$data =  s3read_using(FUN = readRDS, bucket = "cryptomlbucket/mlprophet_users", object = "userpass.df.rds")
+  userpass.df$data =  s3read_using(FUN = readRDS, bucket = "cryptomlbucket/mket_users", object = "userpass.df.rds")
   
   
   output$userTable = renderDataTable({
@@ -62,7 +62,7 @@ server <- function(input, output) {
     put_object(
       file = file.path("updated_users", "userpass.df.rds"),
       object = "userpass.df.rds",
-      bucket = "cryptomlbucket/mlprophet_users"
+      bucket = "cryptomlbucket/mket_users"
     )
     
     shinyalert("Success",
