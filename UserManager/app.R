@@ -57,13 +57,19 @@ server <- function(input, output) {
   })
   
   observeEvent(input$submit, {
-    saveRDS(userpass.df$data, "updated_users/userpass.df.rds")
+    
+    
+    tmp.dir = tempdir()
+
+    saveRDS(userpass.df$data, paste0(tmp.dir,"/userpass.df.rds"))
     
     put_object(
-      file = file.path("updated_users", "userpass.df.rds"),
+      file = paste0(tmp.dir,"/userpass.df.rds"),
       object = "userpass.df.rds",
       bucket = "cryptomlbucket/mket_users"
     )
+    
+    
     
     shinyalert("Success",
                "Users/Passwords Updated!",
