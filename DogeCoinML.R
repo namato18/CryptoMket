@@ -12,8 +12,10 @@ library(aws.s3)
 library(dplyr)
 library(purrr)
 
+api.key.av = "1RF2MSZAZY8XHUGV"
 options(scipen=999)
 possible_json = possibly(.f = jsonlite::fromJSON, otherwise = 'ERROR' )
+possibly_riingo_crypto_prices = possibly(riingo_crypto_prices, otherwise = "ERROR")
 
 possibly_s3read_using = possibly(s3read_using, otherwise = "ERROR")
 
@@ -244,7 +246,7 @@ createModel <- function(Type,TargetIncreasePercent, SuccessThreshold, Symbol, Ti
     outcome.test = outcome[!sample.split]
     
     bst = s3read_using(FUN = readRDS, bucket = "cryptomlbucket/TiingoBoosts", object = paste0("bst_",Symbol,"_",Timeframe,TargetIncreasePercent,".rds"))
-
+    
     
     # Predict
     predictions = predict(bst, test)
@@ -252,11 +254,11 @@ createModel <- function(Type,TargetIncreasePercent, SuccessThreshold, Symbol, Ti
     Actual.Percent.Close = round((((df$Close / df$Open) * 100) - 100), digits = 1)
     Actual.Percent.Low = round((((df$Low / df$Open) * 100) - 100), digits = 1)
     compare2 = data.frame("Actual" = outcome.test,
-                         "Actual.Percent.High" = Actual.Percent.High[which(!sample.split) + 1],
-                         "Actual.Percent.Low" = Actual.Percent.Low[which(!sample.split) + 1],
-                         "Actual.Percent.Close" = Actual.Percent.Close[which(!sample.split) + 1],
-                         "Confidence.Score" = round(predictions, digits = 4),
-                         "Signal" = NA)
+                          "Actual.Percent.High" = Actual.Percent.High[which(!sample.split) + 1],
+                          "Actual.Percent.Low" = Actual.Percent.Low[which(!sample.split) + 1],
+                          "Actual.Percent.Close" = Actual.Percent.Close[which(!sample.split) + 1],
+                          "Confidence.Score" = round(predictions, digits = 4),
+                          "Signal" = NA)
     
     compare2$Signal[compare2$Confidence.Score >= SuccessThreshold] = 1
     compare2$Signal[compare2$Confidence.Score < SuccessThreshold] = 0
@@ -273,7 +275,7 @@ createModel <- function(Type,TargetIncreasePercent, SuccessThreshold, Symbol, Ti
     df = data.frame(outcome.test, predictions)
     
     colnames(df) = c("outcome.test","pred")
-
+    
     df$decision = 0
     df$decision[df$pred >= SuccessThreshold] = 1
     assign('compare',df,.GlobalEnv)
@@ -467,7 +469,7 @@ createModel <- function(Type,TargetIncreasePercent, SuccessThreshold, Symbol, Ti
 
 
 
-predict.tomorrow.multiple <- function(Type,Symbols, Timeframe, SuccessThreshold, .GlobalEnv){
+predict.tomorrow.multiple <- function(Type,Symbols, Timeframe, SuccessThreshold){
   # # Symbols = Symbols
   # Symbols = c('AAPL')
   # Timeframe = 'weekly'
@@ -933,7 +935,7 @@ predict.tomorrow.multiple <- function(Type,Symbols, Timeframe, SuccessThreshold,
 
 
 predict_week = function(symbol, timeframe,type){
-
+  
   symbol = toupper(symbol)
   # symbol = 'ETHUSDT'
   # timeframe = 'daily'
@@ -967,7 +969,7 @@ predict_week = function(symbol, timeframe,type){
                             low = NA,
                             close = NA)
     }
-
+    
   }else{
     data.add = data.frame(time = seq(from = as_date(Sys.Date()),
                                      by = "week", length.out = 7),
@@ -1014,7 +1016,7 @@ predict_week = function(symbol, timeframe,type){
     pred <- data_selected[((nrow(data) - 9 + 1)):(nrow(data)-2), ]
   }else{
     pred <- data_selected[((nrow(data) - 7 + 1)):nrow(data), ]
-    }
+  }
   
   
   
@@ -1079,7 +1081,7 @@ predict_week = function(symbol, timeframe,type){
   if(length(saturdays) > 0 ){
     vals = pad.x$predicted_y[saturdays:nrow(pad.x)]
     lag.vals = Lag(vals, 2)
-
+    
     pad.x$predicted_y[saturdays:nrow(pad.x)] = lag.vals
   }
   
@@ -1103,7 +1105,7 @@ predict_week = function(symbol, timeframe,type){
   x$predicted_y[!is.na(x$data_y) & !is.na(x$predicted_y)] = x$data_y[!is.na(x$data_y) & !is.na(x$predicted_y)] 
   
   for.scale = c(x$data_y,x$predicted_y)
-
+  
   if(timeframe == 'daily'){
     plot.out = ggplot(data = x, aes(x = times)) + 
       geom_line(aes(y = data_y), color = "blue") +
@@ -1590,7 +1592,7 @@ predict.next.bh.bl.tar = function(symbol,timeframe, success.thresh){
   # symbol = "USDCAD"
   # timeframe = "1hour"
   # success.thresh = "0.8"
-
+  
   assign("predictions.df.indi1", NULL, .GlobalEnv)
   assign("predictions.df.indi2", NULL, .GlobalEnv)
   assign("predictions.df.indi3", NULL, .GlobalEnv)
@@ -1607,7 +1609,7 @@ predict.next.bh.bl.tar = function(symbol,timeframe, success.thresh){
                                    "Signal" = character())
   for(j in 1:length(symbol)){
     pair = symbol[j]
-
+    
     predictions = c("BreakH","BreakL","Target")
     for(i in 1:length(predictions)){
       prediction = predictions[i]
@@ -1638,7 +1640,7 @@ predict.next.bh.bl.tar = function(symbol,timeframe, success.thresh){
         df = df1
         df = df[,-1]
       }
-
+      
       
       ###############################
       ############################### CHANGE NAMES
@@ -1949,7 +1951,7 @@ GetHolderInfo = function(coin.address, holder.address, days){
     
     return(df)
   }
-
+  
 }
 
 ##############################################################
@@ -1957,21 +1959,7 @@ GetHolderInfo = function(coin.address, holder.address, days){
 ##############################################################
 ##############################################################
 ##############################################################
-Color.DT = function(df){
-  if(is.null(df)){
-    return(NULL)
-  }else{
-    dt.colored = datatable(df,
-                           rownames = FALSE,
-                           extensions = c("Buttons","FixedHeader"),
-                           style = "bootstrap",
-                           options = list(paging = FALSE,fixedHeader = TRUE, searching = FALSE, dom = 'Bfrtip', buttons = c('csv'))) %>%
-      formatStyle("Signal",
-                  backgroundColor = styleEqual(c("DON'T BUY SIGNAL", "BUY SIGNAL"), c('darkred','lightgreen')))
-    
-    return(dt.colored)
-  }
-}
+
 
 ##############################################################
 ##############################################################
@@ -2017,7 +2005,7 @@ Backtest.AV <- function(df, startDate, endDate, topic, type){
   
   t.sent.bear = summarise(df.filter.type.bear, mean.sent = mean(as.numeric(ticker_sentiment_score)))
   t.change.bear = summarise(df.filter.type.bear, mean.change = mean(hour.forward.change))
-
+  
   if(length(which(t.change.bull$mean.change < 0)) > 0){
     t.pie.bull = t.change.bull[-(which(t.change.bull$mean.change < 0)),]
   }else{
@@ -2071,7 +2059,7 @@ BackTestFF = function(region,topic,date.range,asset,timeframe,impact,sub.filter 
   }
   
   df = possibly_s3read_using(FUN = readRDS, bucket = "cryptomlbucket/ForexFactoryData/News_With_Prices", object = paste0("df.",type,".news.prices.",asset,timeframe,".rds"))
-
+  
   if(impact != "All"){
     df = df[grepl(pattern = impact, x = df$impact),]
   }
@@ -2130,7 +2118,7 @@ BackTestFF = function(region,topic,date.range,asset,timeframe,impact,sub.filter 
            font = list(color = 'white'),
            title = paste0("Pie Chart for ",topic))
   ##
-
+  
   
   char_cols <- sapply(df.to.summarize, is.character)
   df.to.summarize[char_cols] = lapply(df.to.summarize[char_cols], as.numeric)
@@ -2162,7 +2150,7 @@ BackTestFF = function(region,topic,date.range,asset,timeframe,impact,sub.filter 
                               paste0(timeframe.numeric,"min Back % Change"),
                               paste0(timeframe.numeric,"min Forward % Change"),
                               paste0(timeframe.numeric*2,"min Forward % Change")
-                              )
+  )
   set.all= setNames("All","All")
   unique.sub.topics = setNames(unique(df$event.title), unique(df$event.title))
   unique.sub.topics = c(set.all,unique.sub.topics)
@@ -2191,7 +2179,7 @@ CreatePie <- function(region,topic,date.range,asset,timeframe,impact,sub.filter 
   # sub.filter = "All"
   
   timeframe.numeric = as.numeric(str_extract(timeframe,pattern = "\\d+"))
-
+  
   
   if(asset == "SPY"){
     type = "stock"
@@ -2214,7 +2202,7 @@ CreatePie <- function(region,topic,date.range,asset,timeframe,impact,sub.filter 
     group_by(Tag)
   
   df.for.pie = df[,c(10,13,14,15)]
-
+  
   colnames(df.for.pie) = c('Tag', "Once.Back",'Current', 'Once.Forward')
   
   df.for.pie$Change.Backward = abs(round((df.for.pie$Once.Back - df.for.pie$Current) / df.for.pie$Current * 100, 3))
@@ -2249,7 +2237,7 @@ CreateTimeseries <- function(region,topic,date.range,asset,timeframe,impact,sub.
   # timeseries.selected = c(1,2)
   
   timeframe.numeric = as.numeric(str_extract(timeframe,pattern = "\\d+"))
-
+  
   
   if(asset == "SPY"){
     type = "stock"
@@ -2305,11 +2293,566 @@ CreateTimeseries <- function(region,topic,date.range,asset,timeframe,impact,sub.
       plot1 = plot1 %>%
         add_trace(x = x.axis, y = prices, mode="lines",name = selected.filter.df$POSIXct[i])
     }
-
+    
     
   }
   
   return(plot1)
+  
+}
 
+##############################################################
+##############################################################
+##############################################################
+##############################################################
+##############################################################
+
+FearGreedToday <- function(){
+  url = paste0("https://production.dataviz.cnn.io/index/fearandgreed/graphdata/",Sys.Date())
+  
+  test_get = httr::GET(url)
+  
+  test_get$status_code
+  
+  test = rawToChar(test_get$content)
+  
+  test = fromJSON(test, flatten = TRUE)
+  
+  fear.greed.score = test$fear_and_greed$score
+  fear.greed.rating = test$fear_and_greed$rating
+  
+  to.return = list(fear.greed.score = fear.greed.score,
+                   fear.greed.rating = fear.greed.rating)
+  
+  return(to.return)
+}
+##############################################################
+##############################################################
+##############################################################
+##############################################################
+##############################################################
+ReturnSentimentValue <- function(x){
+  if(x <= -0.35){
+    val = "Bearish"
+  }
+  if(x > -0.35 & x <= -0.15){
+    val = "Somewhat-Bearish"
+  }
+  if(x > -0.15 & x < 0.15){
+    val = "Neutral"
+  }
+  if(x > 0.15 & x <= 0.35){
+    val = "Somewhat-Bullish"
+  }
+  if(x >= 0.35){
+    val = "Bullish"
+  }
+  
+  return(val)
+}
+
+##############################################################
+##############################################################
+##############################################################
+##############################################################
+##############################################################
+
+PerformSentimentAnalysis <- function(coin, confidence, type){
+  # coin = c("BTCUSDT",'ETHUSDT',"LINAUSDT",'REEFUSDT')
+  # confidence = 0.5
+
+  
+  
+  assign("predictions.df.indi11", NULL, .GlobalEnv)
+  assign("predictions.df.indi22", NULL, .GlobalEnv)
+  assign("predictions.df.indi33", NULL, .GlobalEnv)
+  assign("predictions.df.indi44", NULL, .GlobalEnv)
+  
+  if(type != "Crypto"){
+    return()
+  }
+  
+  targets= seq(from = 0.2, to = 3, by = 0.2)
+  
+  for(z in 1:length(coin)){
+    # Funding rate data
+    posixct.time = as.POSIXct(Sys.Date() - 3, tz = 'UTC')
+
+    ms = as.numeric(posixct.time, units = "ms") * 1000
+
+    url = paste0("https://fapi.binance.com/fapi/v1/fundingRate?limit=1000&symbol=",coin[z],"&startTime=",ms)
+    test_get = httr::GET(url)
+
+    test_get$status_code
+
+    test = rawToChar(test_get$content)
+
+    test = fromJSON(test, flatten = TRUE)
+
+    test$date = as.POSIXct(test$fundingTime / 1000, origin = "1970-01-01", tz = "UTC")
+
+    funding.data = test
+
+    fd.for.merge = funding.data[nrow(funding.data),] %>%
+      select(fundingRate, date)
+    colnames(fd.for.merge) = c("funding.rate","date.8hr")
+    fd.for.merge$date.8hr = as.character(fd.for.merge$date.8hr)
+    fd.for.merge$date.8hr = as.POSIXlt(fd.for.merge$date.8hr, tz = 'UTC')
+    # 
+    # fd.for.merge = data.frame(funding.rate = 0.0001,
+    #                           date.8hr = "hi")
+    
+    #
+    
+    # webscrape fear
+    
+    url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata/2023-01-01"
+    
+    test_get = httr::GET(url)
+    
+    test_get$status_code
+    
+    test = rawToChar(test_get$content)
+    
+    test = fromJSON(test, flatten = TRUE)
+    
+    df.fear.greed = test$fear_and_greed_historical$data
+    
+    df.fear.greed$date = as.POSIXct(df.fear.greed$x/1000, origin = "1970-01-01", tz = "UTC")
+    df.fg.for.merge = df.fear.greed[nrow(df.fear.greed),] %>%
+      select(y, date)
+    colnames(df.fg.for.merge) = c("rating", "just.date")
+    
+    # Add VIX index
+    time.formatted = ymd(Sys.Date()) - 3
+    time.formatted = format(time.formatted, format = "%Y%m%dT%H%M")
+    
+    full.url = paste0("https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=blockchain&limit=1000&time_from=",time.formatted,"&sort=EARLIEST&apikey=",api.key.av)
+    
+    test_get = httr::GET(full.url)
+    
+    test_get$status_code
+    
+    test = rawToChar(test_get$content)
+    
+    test = fromJSON(test, flatten = TRUE)
+    
+    if(grepl("rate limit", test[1])){
+      # print("rate limit reached")
+      return()
+    }
+    
+    df.comb = test$feed
+    
+    ind = which(duplicated(df.comb$title) & duplicated(df.comb$overall_sentiment_score))
+    
+    df.comb.rem = df.comb[-ind,]
+    df.comb.rem$time = strptime(df.comb.rem$time_published, format = "%Y%m%dT%H%M%S")
+    
+    
+    df.vix = getSymbols("^VIX", auto.assign = FALSE)
+    colnames(df.vix) = c("open","high","low","close","volume","adjusted")
+    df.vix = as.data.frame(df.vix)
+    df.vix$time = as.POSIXct(row.names(df.vix))
+    
+    df.vix.for.merge = df.vix[nrow(df.vix),] %>%
+      select(open, time)
+    colnames(df.vix.for.merge) = c("vix.open","just.date")
+    
+    x = possibly_riingo_crypto_prices(coin[z], start_date = Sys.Date() - lubridate::dmonths(14), end_date = Sys.Date(), resample_frequency = "1day")
+    
+    if(length(x) == 1){
+      stop()
+    }else{
+      x = x[,c(1,4:9)]
+    }
+    
+    
+    
+    ind = which(duplicated(x$date))
+    
+    if(length(ind > 0)){
+      x = x[-ind,]
+    }
+    
+    
+    # trend detection
+    x.xts = as.xts(x)
+    upTrend = as.data.frame(up.trend(x.xts))
+    downTrend = as.data.frame(down.trend(x.xts))
+    
+    x$upTrend = as.numeric(upTrend[,1])
+    x$downTrend = as.numeric(downTrend[,1])
+    
+    x$upTrend = Lag(x$upTrend, 1)
+    x$downTrend = Lag(x$downTrend, 1)
+    #
+    x$date.8hr = floor_date(x$date, "8hour")
+    
+    start.time = format(x$date[1] - lubridate::days(21), format = "%Y%m%dT%H%M")
+    end.time = format(x$date[1], format = "%Y%m%dT%H%M")
+    
+    x$just.date = as.Date(x$date)
+    
+    x = x[nrow(x),]
+    
+    x$rating = df.fg.for.merge$rating[1]
+    x$vix.open = df.vix.for.merge$vix.open[1]
+    x$funding.rate = fd.for.merge$funding.rate[1]
+    
+    x$news.1hr = NA
+    x$news.8hr = NA
+    x$news.24hr = NA
+    
+    
+    x$news.1hr = mean(df.comb.rem[which(df.comb.rem$time > x$date - lubridate::hours(1) & df.comb.rem$time <= x$date),]$overall_sentiment_score)
+    x$news.8hr = mean(df.comb.rem[which(df.comb.rem$time > x$date - lubridate::hours(8) & df.comb.rem$time <= x$date),]$overall_sentiment_score)
+    x$news.24hr = mean(df.comb.rem[which(df.comb.rem$time > x$date - lubridate::hours(24) & df.comb.rem$time <= x$date),]$overall_sentiment_score)
+    
+    
+    x[is.na(x)] = 0
+    
+    df = x %>%
+      select(upTrend, downTrend, rating, vix.open, funding.rate, news.1hr, news.8hr, news.24hr)
+    df[] <- lapply(df, as.numeric)
+    
+    df.m = as.matrix(df)
+    
+    predictions = c()
+    
+    for(i in 1:length(targets)){
+      bst = possibly_s3read_using(FUN = readRDS, bucket = "cryptomlbucket/AlphaVantageData/blockchain_models", object = paste0("bst_",coin[z],"_blockchain_",targets[i],".rds"))
+      
+      prediction = predict(bst, df.m)
+      
+      predictions = c(predictions, prediction)
+    }
+    
+    df.to.return = data.frame(Coin = rep(coin[z], length(predictions)),
+                              Price.Change = paste0(targets,"%"),
+                              Confidence.Hit.Target = round(predictions,3),
+                              signal = rep("DON'T BUY SIGNAL", length(predictions)))
+    df.to.return$signal[df.to.return$Confidence.Hit.Target > confidence] = "BUY SIGNAL"
+    
+    colnames(df.to.return) = c("Coin", "Price.Change", "CS HT", "Signal")
+    
+    assign(paste0("predictions.df.indi",z,z), df.to.return, .GlobalEnv)
+    
+  }
+  
+  one.hr.sentiment = ReturnSentimentValue(df$news.1hr)
+  eight.hr.sentiment = ReturnSentimentValue(df$news.8hr)
+  twenfour.hr.sentiment = ReturnSentimentValue(df$news.24hr)
+  
+  to.return = list(
+    one.hr.sentiment = one.hr.sentiment,
+    eight.hr.sentiment = eight.hr.sentiment,
+    twenfour.hr.sentiment = twenfour.hr.sentiment
+  )
+  
+  return(to.return)
+  
+}
+
+##############################################################
+##############################################################
+##############################################################
+##############################################################
+##############################################################
+
+BacktestSentiment <- function(Type,TargetIncreasePercent, SuccessThreshold, Symbol, Timeframe){
+  # Type = "Crypto"
+  # Timeframe = "1day"
+  # TargetIncreasePercent = 0.2
+  # SuccessThreshold = 0.5
+  # Symbol = "REEFUSDT"
+  
+  if(Type == "Crypto" & Timeframe == "1day"){
+    
+    
+    df = possibly_s3read_using(FUN = readRDS, bucket = "cryptomlbucket/AlphaVantageData/blockchain_models", object = paste0("df.examine_",Symbol,"_blockchain_",TargetIncreasePercent,".rds"))
+    
+    df$prediction = 0
+    df$prediction[df$predicted.prob >= SuccessThreshold] = 1
+    
+    true.pos = length(which(df$actual.high == 1 & df$prediction == 1))
+    false.pos = length(which(df$actual.high == 0 & df$prediction == 1))
+    false.neg = length(which(df$actual.high == 1 & df$prediction == 0))
+    
+    
+    precision = true.pos / (true.pos + false.pos) * 100
+    recall = true.pos / (true.pos + false.neg) * 100
+    f1 = 2*((precision * recall)/(precision + recall)) / 100
+    
+    precision = round(precision, digits = 4)
+    recall = round(recall, digits = 4)
+    f1 = round(f1, digits = 4)
+    
+    to.return = list(df.examine = df,
+                     precision = precision,
+                     recall = recall,
+                     f1 = f1)
+    
+    return(to.return)
+  }
+}
+##############################################################
+##############################################################
+##############################################################
+##############################################################
+##############################################################
+
+BacktestAutomation <- function(df.coins.running, user, timeframe, fee, confidence.score){
+  
+  
+  # user = "nick"
+  # timeframe = 7
+  # fee = 0
+  # confidence.score = 0.7
+  # 
+  # x = aws.s3::get_bucket_df("cryptomlbucket", prefix = "Telegram_Automation/")
+  # 
+  # x.sel = x[grepl(pattern = paste0("Telegram_Automation/",user,"/"), x = x$Key),]
+  # coins.running = na.omit(str_match(string = x.sel$Key, pattern = "/.*/(.*).rds")[,2])
+  # 
+  # 
+  # df.coins.running = data.frame(User = character(),
+  #                               Timeframe = character(),
+  #                               Coins = character(),
+  #                               Target = character(),
+  #                               Confidence = character(),
+  #                               Percentage = character(),
+  #                               TakeProfit = character(),
+  #                               StopLoss = character(),
+  #                               Active = character())
+  # for(z in 1:length(coins.running)){
+  #   dfx = possibly_s3read_using(FUN = readRDS, bucket = paste0("cryptomlbucket/Telegram_Automation/",user), object = paste0(coins.running[z],".rds"))
+  #   df.coins.running = rbind(df.coins.running, dfx)
+  # }
+  # 
+  # For each coin running, I want to grab the last weeks worth of data by
+  # the automation timeframe
+  
+  ohlc.list = list()
+  to.remove = c()
+  
+  for(i in 1:nrow(df.coins.running)){
+    df = possibly_riingo_crypto_prices(ticker = df.coins.running$Coins[i],
+                                       start_date = Sys.Date() - 7,
+                                       end_date = Sys.Date(),
+                                       resample_frequency = df.coins.running$Timeframe[i],
+                                       exchanges = "binance")
+    if(length(df) == 1){
+      to.remove = c(to.remove,i)
+      next()
+    }
+    bst = s3read_using(FUN = readRDS, bucket = paste0("cryptomlbucket/TiingoBoosts"),
+                       object = paste0("bst_",df.coins.running$Coins[i],"_",df.coins.running$Timeframe[i],df.coins.running$Target[i],".rds"))
+    
+    if(df.coins.running$Timeframe[i] == '4hour' | df.coins.running$Timeframe[i] == '8hour'| df.coins.running$Timeframe[i] == '1hour'| df.coins.running$Timeframe[i] == '15min' |
+       df.coins.running$Timeframe[i] == '30min' | df.coins.running$Timeframe[i] == '45min'){
+      #df1 = riingo_crypto_prices('REEFUSDT', end_date = Sys.Date(), resample_frequency = '4hour')
+      #df1 = df1[-nrow(df1),]
+      #df2 = riingo_crypto_latest('REEFUSDT', resample_frequency = '4hour')
+      #df = rbind(df1,df2)
+      df1 = riingo_crypto_prices(df.coins.running$Coins[i], start_date = Sys.Date() - as.numeric(timeframe), end_date = Sys.Date(), resample_frequency = df.coins.running$Timeframe[i], exchanges = "binance")
+      df1 = df1[-nrow(df1),]
+      df2 = riingo_crypto_latest(df.coins.running$Coins[i], resample_frequency = df.coins.running$Timeframe[i], exchanges = "binance")
+      df = rbind(df1,df2)
+    }else{
+      df = riingo_crypto_prices(df.coins.running$Coins[i], start_date = Sys.Date() - as.numeric(timeframe), end_date = Sys.Date(), resample_frequency = df.coins.running$Timeframe[i], exchanges = "binance")
+    }
+    
+    # Modify data to be more useable
+    df = df[,4:9]
+    df$Percent.Change = NA
+    
+    colnames(df) = c("Date","Open","High","Low","Close","Volume","Percent.Change")
+    df$Percent.Change = round((((df$High / df$Open) * 100) - 100), digits = 1)
+    
+    
+    
+    #Add column for binary previouos day change+
+    df$Previous = NA
+    for(k in 2:nrow(df)){
+      if(df$Percent.Change[k - 1] <= 0){
+        df$Previous[k] = 0
+      }else{
+        df$Previous[k] = 1
+      }
+    }
+    
+    # df$Percent.Change = c(NA,df$Percent.Change[-nrow(df)])
+    
+    
+    # Remove first row since we can't use it
+    df = df[-1,]
+    df.9 = df
+    
+    # Adding Moving Averages
+    df$MA10 = NA
+    df$MA20 = NA
+    
+    for(k in 21:nrow(df)){
+      df$MA10[k] = mean(df$Close[k-10:k])
+      df$MA20[k] = mean(df$Close[k-20:k])
+    }
+    # df$MA10 = round(df$MA10, digits = 2)
+    # df$MA20 = round(df$MA20, digits = 2)
+    
+    # Add column for if MA10 is above or below MA20
+    df$MAAB = 0
+    
+    df$MAAB[df$MA10 > df$MA20] = 1
+    
+    df = df[,-which(colnames(df) %in% c("MA10","MA20"))]
+    
+    # Convert to actual dates and remove year and change to numeric
+    #df$Date = str_replace(string = df$Date, pattern = "T", replacement = " ")
+    #df$Date = str_replace(string = df$Date, pattern = "Z", replacement = "")
+    
+    df$Date = as.POSIXct(df$Date, format = "%Y-%m-%d %H:%M:%S")
+    
+    df = df[!is.na(df$Date),]
+    
+    
+    df$Date = as.POSIXct(df$Date, format = "%Y-%m-%d %H:%M:%S")
+    
+    df = as.xts(df)
+    
+    
+    candle.list = list(hammer(df), inverted.hammer(df), bearish.engulf(df), bullish.engulf(df), up.trend(df), down.trend(df))
+    
+    # Remove unusable rows
+    for(k in 1:length(candle.list)){
+      df = cbind(df, candle.list[[k]])
+    }
+    df = df[-(1:20),]
+    
+    
+    # Add lagged values
+    for(k in 1:5){
+      high.lag = Lag(df$High, k)
+      close.lag = Lag(df$Close, k)
+      percent.change.lag = ((high.lag/close.lag) - 1) * 100
+      df = cbind(df, percent.change.lag)
+      
+    }
+    
+    df = df[-c(1:5),]
+    
+    df[is.na(df)] = 0
+    
+    # remove only last row
+    df = df[-nrow(df),]
+    
+    ### Grab open high low close for later
+    df.ohlc = as.data.frame(df[,c(1:4)])
+    df.ohlc$Coins = df.coins.running$Coins[i]
+    df.ohlc$Time = row.names(df.ohlc)
+    
+    # REMOVE FIRST ONE TO GET TIMEING RIGHT FOR PURCHASES
+    df.ohlc = df.ohlc[-1,]
+    
+    ### Remove OPEN HIGH LOW CLOSE
+    df = df[,-c(1:4)]
+    
+    
+    
+    
+    ############################################# 
+    ############################################# PREDICT CURRENT CANDLE
+    predict.next = predict(bst, df)
+    
+    
+    
+    if(i == 1){
+      predictions.comb = data.frame(predict.next)
+    }else{
+      if(length(predict.next) != nrow(predictions.comb)){
+        print("skipping coin")
+        to.remove = c(to.remove, i)
+        next()
+      }
+      predictions.comb = cbind(predictions.comb, predict.next)
+    }
+    
+    temp.list = list(df.ohlc = df.ohlc)
+    assign(paste0("temp.list.",df.coins.running$Coins[i]),temp.list,.GlobalEnv)
+    
+    ohlc.list = c(ohlc.list,temp.list)
+    
+    print(paste0(i," out of: ",nrow(df.coins.running)))
+  }
+  
+  if(length(to.remove) != 0){
+    colnames(predictions.comb) = df.coins.running$Coins[-to.remove]
+  }else{
+    colnames(predictions.comb) = df.coins.running$Coins
+  }
+  
+  t.predictions.comb = t(predictions.comb)
+  
+  woulda.bought = c()
+  confidence.scores = c()
+  for(i in 1:ncol(t.predictions.comb)){
+    x = (which(t.predictions.comb[,i] >= confidence.score & t.predictions.comb[,i] == max(t.predictions.comb[,i])))
+    conf = max(t.predictions.comb[,i])
+    if(length(x) < 1){
+      x = NA
+      conf = NA
+    }
+    
+    confidence.scores = c(confidence.scores, conf)
+    woulda.bought = c(woulda.bought,x)
+  }
+  
+  df.purchases = ohlc.list[[woulda.bought[1]]][0,]
+  
+  for(i in 1:(length(woulda.bought))){
+    if(is.na(woulda.bought[i])){
+      next()
+    }
+    
+    temp.df = ohlc.list[[woulda.bought[i]]][i,]
+    df.purchases = rbind(df.purchases,temp.df)
+    
+  }
+  if(any(is.na(confidence.scores))){
+    df.purchases$Confidence = round(confidence.scores[-which(is.na(confidence.scores))], 3)
+  }else{
+    df.purchases$Confidence = round(confidence.scores, 3)
+  }
+  
+  df.purchases = na.omit(df.purchases)
+  
+  df.purchases$OH = round((df.purchases$High - df.purchases$Open) / df.purchases$Open * 100, 3)
+  df.purchases$OC = round((df.purchases$Close - df.purchases$Open) / df.purchases$Open * 100, 3)
+  
+  df.purchases = left_join(df.purchases, df.coins.running[,c(3,7)], by = "Coins")
+  
+  df.purchases$PL = 0
+  df.purchases$PL[df.purchases$OH >= df.purchases$TakeProfit] = df.purchases$TakeProfit[df.purchases$OH >= df.purchases$TakeProfit]
+  df.purchases$PL[df.purchases$OH < df.purchases$TakeProfit] = df.purchases$OC[df.purchases$OH < df.purchases$TakeProfit]
+  
+  numeric_cols = sapply(df.purchases, is.numeric)
+  df.purchases[numeric_cols] = lapply(df.purchases[numeric_cols], signif, digits = 6)
+  
+  PL = sum(df.purchases$PL)
+  
+  df.purchases$OH = paste0(df.purchases$OH, " %")
+  df.purchases$OC = paste0(df.purchases$OC, " %")
+  df.purchases$TakeProfit = paste0(df.purchases$TakeProfit, " %")
+  df.purchases$PL = paste0(df.purchases$PL, " %")
+  
+  colnames(df.purchases) = c("Open", "High", "Low", "Close", "Coin", "Time (UTC)", "Confidence Scores", "Open/High", "Open/Close", "Take Profit", "PL")
+  
+  fee.to.subtract = fee * nrow(df.purchases) * 2
+  PL = PL - fee.to.subtract
+  
+  to.return = list(df.purchases = df.purchases,
+                   PL = PL)
+  
+  return(to.return)
 }
 
